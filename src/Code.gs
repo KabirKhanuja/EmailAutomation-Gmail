@@ -1,5 +1,4 @@
-// global constants
-const DASHBOARD_SHEET_ID = 'enter the sheet id here (i used google sheets for cloud interaction)';
+const DASHBOARD_SHEET_ID = '1XFCGbCVgpSpkjXl_sUdLnK_K4B9HsB-74lxeii5qWQo';
 const DASHBOARD_SHEET_NAME = 'EmailDashboard';
 const PROCESSED_LABEL = 'AutomationProcessed';
 
@@ -18,33 +17,13 @@ function ensureGmailLabel(labelName) {
   return label;
 }
 
-// today's email by date
+
 function getTodayDateQuery() {
   const today = new Date();
   const yyyy = today.getFullYear();
   const mm = String(today.getMonth() + 1).padStart(2, '0');
   const dd = String(today.getDate()).padStart(2, '0');
   return `${yyyy}/${mm}/${dd}`;
-}
-
-
-function getGroqSummaryAndImportance(subject, body) {
-  const prompt = `
-You are an AI assistant that analyzes email content. 
-Summarize the email below and rate its importance from 1 to 10, where:
-- 1–3 = spam or promotional
-- 4–6 = personal, low urgency
-- 7–8 = relevant work email or internal communication
-- 9–10 = high-priority tasks, deadlines, or meetings
-
-EMAIL SUBJECT: ${subject}
-EMAIL BODY: ${body}
-`;
-
-  return {
-    summary: subject + " (summary here)",
-    importanceScore: Math.floor(Math.random() * 10) + 1
-  };
 }
 
 
@@ -114,5 +93,34 @@ function processImportantEmailsForDashboard() {
 
   importantEmails.sort((a, b) => b.importanceScore - a.importanceScore);
   storeEmailDataInSheet(importantEmails.slice(0, 25));
+}
+
+
+function doGet() {
+  const sheet = SpreadsheetApp.openById(DASHBOARD_SHEET_ID).getSheetByName(DASHBOARD_SHEET_NAME);
+  const rows = sheet.getDataRange().getValues();
+  const headers = rows.shift();
+
+  const data = rows.map(row => {
+    let obj = {};
+    headers.forEach((key, i) => obj[key] = row[i]);
+    return obj;
+  });
+
+  return ContentService
+    .createTextOutput(JSON.stringify(data)) 
+    .setMimeType(ContentService.MimeType.JSON) 
+    .setHeader("Access-Control-Allow-Origin", "*");
+}
+
+
+
+function doPost() {
+  processImportantEmailsForDashboard(); 
+
+  return ContentService
+    .createTextOutput("Emails processed successfully.")
+    .setMimeType(ContentService.MimeType.TEXT)
+    .setHeader("Access-Control-Allow-Origin", "*");
 }
 
