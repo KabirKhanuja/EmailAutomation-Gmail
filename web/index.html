@@ -125,15 +125,12 @@ document.getElementById('refreshBtn').addEventListener('click', async () => {
   document.getElementById('spinner').style.display = 'inline-block';
 
   try {
-    // First trigger the processing
-    const processRes = await fetch(APPS_SCRIPT_WEBAPP_URL);
-    if (!processRes.ok) {
-      throw new Error(`HTTP error! status: ${processRes.status}`);
-    }
+    // ✅ Send a POST request to trigger email processing
+    const processRes = await fetch(APPS_SCRIPT_WEBAPP_URL, { method: 'POST' });
     const processMsg = await processRes.text();
     document.getElementById('status').textContent = processMsg;
 
-    // Then fetch the updated data after a short delay
+    // Wait for 3 seconds, then re-render dashboard
     setTimeout(async () => {
       try {
         await renderDashboard();
@@ -144,7 +141,7 @@ document.getElementById('refreshBtn').addEventListener('click', async () => {
         btn.disabled = false;
         document.getElementById('spinner').style.display = 'none';
       }
-    }, 3000); // 3 second delay to allow data processing
+    }, 3000);
     
   } catch (err) {
     document.getElementById('status').textContent = 'Error refreshing data: ' + err.message;
@@ -153,6 +150,7 @@ document.getElementById('refreshBtn').addEventListener('click', async () => {
     document.getElementById('spinner').style.display = 'none';
   }
 });
+
 
 window.onload = renderDashboard;
 </script>
