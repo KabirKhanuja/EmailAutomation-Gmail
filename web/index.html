@@ -9,12 +9,6 @@
     th { background-color: #f2f2f2; }
     .btn { padding: 10px 20px; background-color: #4285F4; color: white; border: none; cursor: pointer; }
     .btn:disabled { background-color: #aaa; }
-
-    .importance-low { background-color: #e3f7d3; }     /* green */
-    .importance-medium { background-color: #fff9c4; }  /* yellow */
-    .importance-high { background-color: #ffcccb; }    /* red */
-
-    #footer { margin-top: 20px; font-size: 14px; color: #555; }
   </style>
 </head>
 <body>
@@ -38,67 +32,39 @@
   <tbody></tbody>
 </table>
 
-<div id="footer">
-  Last updated: <span id="lastUpdated">Never</span>
-</div>
-
 <script>
-const APPS_SCRIPT_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbwkB-Dtimpjt1f0p-0WY0ry8KA6RhQ2ivk_ZhheD4Oet7LoSGgWjFMsAlYfvCvBzjqo/exec';
-const DATA_URL = APPS_SCRIPT_WEBAPP_URL + '?mode=read';
-
-function getImportanceClass(score) {
-  if (score >= 8) return 'importance-high';
-  if (score >= 4) return 'importance-medium';
-  return 'importance-low';
-}
+const BASE_URL = 'https://script.google.com/macros/s/AKfycbwkB-Dtimpjt1f0p-0WY0ry8KA6RhQ2ivk_ZhheD4Oet7LoSGgWjFMsAlYfvCvBzjqo/exec';
 
 async function fetchSheetData() {
-  const res = await fetch(DATA_URL);
-  const contentType = res.headers.get("content-type");
-
-  if (!res.ok) {
-    throw new Error(`HTTP error! status: ${res.status}`);
-  }
-
-  if (!contentType || !contentType.includes("application/json")) {
-    const text = await res.text();
-    throw new Error("Expected JSON, got: " + text);
-  }
-
-  const data = await res.json();
-  if (!Array.isArray(data)) {
-    throw new Error("Data is not an array.");
-  }
+  const res = await fetch(BASE_URL); // GET request
+  const data = await res.json();     // ← expects JSON
+  if (!Array.isArray(data)) throw new Error("Data is not an array");
   return data;
 }
 
 async function renderDashboard() {
   document.getElementById('status').textContent = 'Loading data...';
-
   try {
     const data = await fetchSheetData();
     const tbody = document.querySelector('#emailTable tbody');
     tbody.innerHTML = '';
 
     data.forEach(row => {
-      const score = row.importanceScore || row['Importance Score'] || 0;
       const tr = document.createElement('tr');
-      tr.className = getImportanceClass(score);
       tr.innerHTML = `
-        <td>${row.date || row.Date || ''}</td>
-        <td>${row.sender || row.Sender || ''}</td>
-        <td>${row.subject || row.Subject || ''}</td>
-        <td>${row.summary || row.Summary || ''}</td>
-        <td>${score}</td>
-        <td><a href="${row.permalink || row.Permalink || '#'}" target="_blank">Open</a></td>
+        <td>${row.date || row.Date}</td>
+        <td>${row.sender || row.Sender}</td>
+        <td>${row.subject || row.Subject}</td>
+        <td>${row.summary || row.Summary}</td>
+        <td>${row.importanceScore || row['Importance Score']}</td>
+        <td><a href="${row.permalink || row.Permalink}" target="_blank">Open</a></td>
       `;
       tbody.appendChild(tr);
     });
 
-    document.getElementById('lastUpdated').textContent = new Date().toLocaleString();
     document.getElementById('status').textContent = '';
   } catch (err) {
-    document.getElementById('status').textContent = 'Error loading data: ' + err.message;
+    document.getElementById('status').textContent = 'Error loading data.';
     console.error(err);
   }
 }
@@ -109,27 +75,23 @@ document.getElementById('refreshBtn').addEventListener('click', async () => {
   document.getElementById('status').textContent = 'Processing emails...';
 
   try {
-    const processRes = await fetch(APPS_SCRIPT_WEBAPP_URL, { method: 'POST' });
-    const processMsg = await processRes.text();
-    document.getElementById('status').textContent = processMsg;
+    const res = await fetch(BASE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: "refresh" }) // dummy payload to trigger doPost
+    });
 
-    // Wait 3 seconds before fetching updated data
-    setTimeout(async () => {
-      try {
-        await renderDashboard();
-      } catch (err) {
-        document.getElementById('status').textContent = 'Error loading updated data: ' + err.message;
-        console.error(err);
-      } finally {
-        btn.disabled = false;
-      }
-    }, 3000);
-    
+    const msg = await res.text();
+    document.getElementById('status').textContent = msg;
+
+    // Wait before reloading dashboard
+    setTimeout(renderDashboard, 4000); 
   } catch (err) {
-    document.getElementById('status').textContent = 'Error refreshing data: ' + err.message;
+    document.getElementById('status').textContent = 'Error refreshing data.';
     console.error(err);
-    btn.disabled = false;
   }
+
+  btn.disabled = false;
 });
 
 window.onload = renderDashboard;
