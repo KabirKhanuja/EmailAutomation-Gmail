@@ -2,7 +2,7 @@
 <html>
 <head>
   <title>Email Dashboard</title>
-  <style>
+<style>
     body { font-family: Arial, sans-serif; padding: 20px; }
     table { border-collapse: collapse; width: 100%; margin-top: 20px; }
     th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
@@ -10,28 +10,28 @@
     .btn { padding: 10px 20px; background-color: #4285F4; color: white; border: none; cursor: pointer; }
     .btn:disabled { background-color: #aaa; }
 
-    .importance-low { background-color: #e3f7d3; }     
-    .importance-medium { background-color: #fff9c4; }  
-    .importance-high { background-color: #ffcccb; }   
+    .importance-high { background-color: #ffcccc; }   /* Red for 8-10 */
+    .importance-mid  { background-color: #fff9c4; }   /* Yellow for 6-7 */
+    .importance-low  { background-color: #d0ebff; }   /* Light blue for 4-5 */
 
     #spinner {
-      display: none;
-      margin-left: 10px;
-      border: 3px solid #f3f3f3;
-      border-top: 3px solid #4285F4;
-      border-radius: 50%;
-      width: 16px;
-      height: 16px;
-      animation: spin 1s linear infinite;
+        display: none;
+        margin-left: 10px;
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #4285F4;
+        border-radius: 50%;
+        width: 16px;
+        height: 16px;
+        animation: spin 1s linear infinite;
     }
 
     @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
     }
 
     #footer { margin-top: 20px; font-size: 14px; color: #555; }
-  </style>
+</style>
 </head>
 <body>
 
@@ -65,9 +65,11 @@ const REFRESH_URL = 'https://script.google.com/macros/s/AKfycbwkB-Dtimpjt1f0p-0W
 
 function getImportanceClass(score) {
   if (score >= 8) return 'importance-high';
-  if (score >= 4) return 'importance-medium';
-  return 'importance-low';
+  if (score >= 6) return 'importance-mid';
+  if (score >= 4) return 'importance-low';
+  return '';
 }
+
 
 async function fetchSheetData() {
   const res = await fetch(SHEET_URL);
