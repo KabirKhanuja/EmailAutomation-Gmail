@@ -33,10 +33,11 @@
 </table>
 
 <script>
-const BASE_URL = 'https://script.google.com/macros/s/AKfycbwkB-Dtimpjt1f0p-0WY0ry8KA6RhQ2ivk_ZhheD4Oet7LoSGgWjFMsAlYfvCvBzjqo/exec';
+const SHEET_URL = 'https://opensheet.elk.sh/1XFCGbCVgpSpkjXl_sUdLnK_K4B9HsB-74lxeii5qWQo/EmailDashboard';
+const REFRESH_URL = 'https://script.google.com/macros/s/AKfycbwkB-Dtimpjt1f0p-0WY0ry8KA6RhQ2ivk_ZhheD4Oet7LoSGgWjFMsAlYfvCvBzjqo/exec';
 
 async function fetchSheetData() {
-  const res = await fetch(BASE_URL);
+  const res = await fetch(SHEET_URL);
   const data = await res.json();
   if (!Array.isArray(data)) throw new Error("Data is not an array");
   return data;
@@ -75,11 +76,11 @@ document.getElementById('refreshBtn').addEventListener('click', async () => {
   document.getElementById('status').textContent = 'Refreshing...';
 
   try {
-    const refreshURL = `${BASE_URL}?action=refresh`;
-    const res = await fetch(refreshURL);
+    const res = await fetch(REFRESH_URL);
     const msg = await res.text();
     document.getElementById('status').textContent = msg;
 
+    // Wait 3 seconds before fetching new sheet data
     setTimeout(renderDashboard, 3000);
   } catch (err) {
     document.getElementById('status').textContent = 'Refresh failed.';
