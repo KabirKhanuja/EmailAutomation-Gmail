@@ -61,6 +61,7 @@
 
 <script>
 const APPS_SCRIPT_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbwkB-Dtimpjt1f0p-0WY0ry8KA6RhQ2ivk_ZhheD4Oet7LoSGgWjFMsAlYfvCvBzjqo/exec';
+const DATA_URL = APPS_SCRIPT_WEBAPP_URL + '?mode=read';
 
 function getImportanceClass(score) {
   if (score >= 8) return 'importance-high';
@@ -69,7 +70,7 @@ function getImportanceClass(score) {
 }
 
 async function fetchSheetData() {
-  const res = await fetch(APPS_SCRIPT_WEBAPP_URL);
+  const res = await fetch(DATA_URL); // only fetch from ?mode=read for JSON
   const data = await res.json();
   if (!Array.isArray(data)) throw new Error("Data is not an array.");
   return data;
@@ -116,10 +117,11 @@ document.getElementById('refreshBtn').addEventListener('click', async () => {
   document.getElementById('spinner').style.display = 'inline-block';
 
   try {
-    const res = await fetch(APPS_SCRIPT_WEBAPP_URL);
+    const res = await fetch(APPS_SCRIPT_WEBAPP_URL); // trigger 
     const msg = await res.text();
     document.getElementById('status').textContent = msg;
-    setTimeout(renderDashboard, 4000);
+
+    setTimeout(renderDashboard, 4000); 
   } catch (err) {
     document.getElementById('status').textContent = 'Error refreshing data.';
     console.error(err);
@@ -130,6 +132,7 @@ document.getElementById('refreshBtn').addEventListener('click', async () => {
 
 window.onload = renderDashboard;
 </script>
+
 
 </body>
 </html>
