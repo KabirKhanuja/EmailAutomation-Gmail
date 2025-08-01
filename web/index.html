@@ -69,6 +69,8 @@ function getImportanceClass(score) {
   return 'importance-low';
 }
 
+console.log("Raw response preview:", await res.clone().text());
+
 async function fetchSheetData() {
   const res = await fetch(DATA_URL);
   const contentType = res.headers.get("content-type");
