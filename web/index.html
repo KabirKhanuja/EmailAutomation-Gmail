@@ -71,15 +71,26 @@ function getImportanceClass(score) {
 
 async function fetchSheetData() {
   const res = await fetch(DATA_URL);
+  const contentType = res.headers.get("content-type");
+
   if (!res.ok) {
     throw new Error(`HTTP error! status: ${res.status}`);
   }
+
+  if (!contentType || !contentType.includes("application/json")) {
+    const text = await res.text();
+    throw new Error("Expected JSON, got: " + text);
+  }
+
   const data = await res.json();
+
   if (!Array.isArray(data)) {
     throw new Error("Data is not an array.");
   }
+
   return data;
 }
+
 
 async function renderDashboard() {
   document.getElementById('status').textContent = 'Loading data...';
