@@ -30,18 +30,15 @@
     </tr>
   </thead>
   <tbody>
-
+    
   </tbody>
 </table>
 
 <script>
-const SHEET_ID = '1XFCGbCVgpSpkjXl_sUdLnK_K4B9HsB-74lxeii5qWQo';
-const SHEET_NAME = 'EmailDashboard';
 const APPS_SCRIPT_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbwkB-Dtimpjt1f0p-0WY0ry8KA6RhQ2ivk_ZhheD4Oet7LoSGgWjFMsAlYfvCvBzjqo/exec'; 
 
 async function fetchSheetData() {
-  const sheetUrl = `https://opensheet.elk.sh/${SHEET_ID}/${SHEET_NAME}`;
-  const res = await fetch(sheetUrl);
+  const res = await fetch(APPS_SCRIPT_WEBAPP_URL);
   const data = await res.json();
   if (!Array.isArray(data)) {
     throw new Error("Data is not an array. Check sheet structure.");
@@ -49,27 +46,31 @@ async function fetchSheetData() {
   return data;
 }
 
-
 async function renderDashboard() {
   document.getElementById('status').textContent = 'Loading data...';
-  const data = await fetchSheetData();
-  const tbody = document.querySelector('#emailTable tbody');
-  tbody.innerHTML = '';
+  try {
+    const data = await fetchSheetData();
+    const tbody = document.querySelector('#emailTable tbody');
+    tbody.innerHTML = '';
 
-  data.forEach(row => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${row.Date}</td>
-      <td>${row.Sender}</td>
-      <td>${row.Subject}</td>
-      <td>${row.Summary}</td>
-      <td>${row['Importance Score']}</td>
-      <td><a href="${row.Permalink}" target="_blank">Open</a></td>
-    `;
-    tbody.appendChild(tr);
-  });
+    data.forEach(row => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${row.date || row.Date}</td>
+        <td>${row.sender || row.Sender}</td>
+        <td>${row.subject || row.Subject}</td>
+        <td>${row.summary || row.Summary}</td>
+        <td>${row.importanceScore || row['Importance Score']}</td>
+        <td><a href="${row.permalink || row.Permalink}" target="_blank">Open</a></td>
+      `;
+      tbody.appendChild(tr);
+    });
 
-  document.getElementById('status').textContent = '';
+    document.getElementById('status').textContent = '';
+  } catch (err) {
+    document.getElementById('status').textContent = 'Error loading data.';
+    console.error(err);
+  }
 }
 
 document.getElementById('refreshBtn').addEventListener('click', async () => {
@@ -81,9 +82,11 @@ document.getElementById('refreshBtn').addEventListener('click', async () => {
     const res = await fetch(APPS_SCRIPT_WEBAPP_URL);
     const msg = await res.text();
     document.getElementById('status').textContent = msg;
+
     setTimeout(renderDashboard, 4000); 
   } catch (err) {
     document.getElementById('status').textContent = 'Error refreshing data.';
+    console.error(err);
   }
 
   btn.disabled = false;
