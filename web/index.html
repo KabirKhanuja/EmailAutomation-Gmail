@@ -9,6 +9,28 @@
     th { background-color: #f2f2f2; }
     .btn { padding: 10px 20px; background-color: #4285F4; color: white; border: none; cursor: pointer; }
     .btn:disabled { background-color: #aaa; }
+
+    .importance-low { background-color: #e3f7d3; }     
+    .importance-medium { background-color: #fff9c4; }  
+    .importance-high { background-color: #ffcccb; }   
+
+    #spinner {
+      display: none;
+      margin-left: 10px;
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #4285F4;
+      border-radius: 50%;
+      width: 16px;
+      height: 16px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    #footer { margin-top: 20px; font-size: 14px; color: #555; }
   </style>
 </head>
 <body>
@@ -16,6 +38,7 @@
 <h1>Email Summary Dashboard</h1>
 
 <button id="refreshBtn" class="btn">Refresh Today's Emails</button>
+<div id="spinner"></div>
 <p id="status"></p>
 
 <table id="emailTable">
@@ -32,62 +55,80 @@
   <tbody></tbody>
 </table>
 
+<div id="footer">
+  Last updated: <span id="lastUpdated">Never</span>
+</div>
+
 <script>
 const SHEET_URL = 'https://opensheet.elk.sh/1XFCGbCVgpSpkjXl_sUdLnK_K4B9HsB-74lxeii5qWQo/EmailDashboard';
 const REFRESH_URL = 'https://script.google.com/macros/s/AKfycbwkB-Dtimpjt1f0p-0WY0ry8KA6RhQ2ivk_ZhheD4Oet7LoSGgWjFMsAlYfvCvBzjqo/exec';
 
+function getImportanceClass(score) {
+  if (score >= 8) return 'importance-high';
+  if (score >= 4) return 'importance-medium';
+  return 'importance-low';
+}
+
 async function fetchSheetData() {
   const res = await fetch(SHEET_URL);
   const data = await res.json();
-  if (!Array.isArray(data)) throw new Error("Data is not an array");
+  if (!Array.isArray(data)) throw new Error("Data is not an array.");
   return data;
 }
 
 async function renderDashboard() {
   document.getElementById('status').textContent = 'Loading data...';
+  document.getElementById('spinner').style.display = 'inline-block';
+
   try {
     const data = await fetchSheetData();
     const tbody = document.querySelector('#emailTable tbody');
     tbody.innerHTML = '';
 
     data.forEach(row => {
+      const score = parseInt(row['Importance Score']) || 0;
       const tr = document.createElement('tr');
+      tr.className = getImportanceClass(score);
       tr.innerHTML = `
         <td>${row.Date}</td>
         <td>${row.Sender}</td>
         <td>${row.Subject}</td>
         <td>${row.Summary}</td>
-        <td>${row['Importance Score']}</td>
+        <td>${score}</td>
         <td><a href="${row.Permalink}" target="_blank">Open</a></td>
       `;
       tbody.appendChild(tr);
     });
 
+    document.getElementById('lastUpdated').textContent = new Date().toLocaleString();
     document.getElementById('status').textContent = '';
   } catch (err) {
     document.getElementById('status').textContent = 'Error loading data.';
     console.error(err);
   }
+
+  document.getElementById('spinner').style.display = 'none';
 }
 
 document.getElementById('refreshBtn').addEventListener('click', async () => {
   const btn = document.getElementById('refreshBtn');
   btn.disabled = true;
   document.getElementById('status').textContent = 'Refreshing...';
+  document.getElementById('spinner').style.display = 'inline-block';
 
   try {
     const res = await fetch(REFRESH_URL);
     const msg = await res.text();
     document.getElementById('status').textContent = msg;
 
-    // Wait 3 seconds before fetching new sheet data
-    setTimeout(renderDashboard, 3000);
+    setTimeout(renderDashboard, 3000); 
   } catch (err) {
     document.getElementById('status').textContent = 'Refresh failed.';
     console.error(err);
   }
 
   btn.disabled = false;
+  document.getElementById('spinner').style.display = 'none';
 });
 
 window.onload = renderDashboard;
