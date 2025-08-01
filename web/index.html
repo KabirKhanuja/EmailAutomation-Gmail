@@ -9,6 +9,8 @@
     th { background-color: #f2f2f2; }
     .btn { padding: 10px 20px; background-color: #4285F4; color: white; border: none; cursor: pointer; }
     .btn:disabled { background-color: #aaa; }
+
+    
   </style>
 </head>
 <body>
@@ -55,14 +57,14 @@ async function renderDashboard() {
 
     data.forEach(row => {
       const tr = document.createElement('tr');
-      tr.innerHTML = 
+      tr.innerHTML = `
         <td>${row.date || row.Date}</td>
         <td>${row.sender || row.Sender}</td>
         <td>${row.subject || row.Subject}</td>
         <td>${row.summary || row.Summary}</td>
         <td>${row.importanceScore || row['Importance Score']}</td>
         <td><a href="${row.permalink || row.Permalink}" target="_blank">Open</a></td>
-      ;
+      `;
       tbody.appendChild(tr);
     });
 
