@@ -36,8 +36,8 @@
 const BASE_URL = 'https://script.google.com/macros/s/AKfycbwkB-Dtimpjt1f0p-0WY0ry8KA6RhQ2ivk_ZhheD4Oet7LoSGgWjFMsAlYfvCvBzjqo/exec';
 
 async function fetchSheetData() {
-  const res = await fetch(BASE_URL); // GET request
-  const data = await res.json();     // ← expects JSON
+  const res = await fetch(BASE_URL);
+  const data = await res.json();
   if (!Array.isArray(data)) throw new Error("Data is not an array");
   return data;
 }
@@ -52,12 +52,12 @@ async function renderDashboard() {
     data.forEach(row => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td>${row.date || row.Date}</td>
-        <td>${row.sender || row.Sender}</td>
-        <td>${row.subject || row.Subject}</td>
-        <td>${row.summary || row.Summary}</td>
-        <td>${row.importanceScore || row['Importance Score']}</td>
-        <td><a href="${row.permalink || row.Permalink}" target="_blank">Open</a></td>
+        <td>${row.Date}</td>
+        <td>${row.Sender}</td>
+        <td>${row.Subject}</td>
+        <td>${row.Summary}</td>
+        <td>${row['Importance Score']}</td>
+        <td><a href="${row.Permalink}" target="_blank">Open</a></td>
       `;
       tbody.appendChild(tr);
     });
@@ -72,22 +72,17 @@ async function renderDashboard() {
 document.getElementById('refreshBtn').addEventListener('click', async () => {
   const btn = document.getElementById('refreshBtn');
   btn.disabled = true;
-  document.getElementById('status').textContent = 'Processing emails...';
+  document.getElementById('status').textContent = 'Refreshing...';
 
   try {
-    const res = await fetch(BASE_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: "refresh" }) // dummy payload to trigger doPost
-    });
-
+    const refreshURL = `${BASE_URL}?action=refresh`;
+    const res = await fetch(refreshURL);
     const msg = await res.text();
     document.getElementById('status').textContent = msg;
 
-    // Wait before reloading dashboard
-    setTimeout(renderDashboard, 4000); 
+    setTimeout(renderDashboard, 3000);
   } catch (err) {
-    document.getElementById('status').textContent = 'Error refreshing data.';
+    document.getElementById('status').textContent = 'Refresh failed.';
     console.error(err);
   }
 
