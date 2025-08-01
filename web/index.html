@@ -14,22 +14,6 @@
     .importance-medium { background-color: #fff9c4; }  /* yellow */
     .importance-high { background-color: #ffcccb; }    /* red */
 
-    #spinner {
-      display: none;
-      margin-left: 10px;
-      border: 3px solid #f3f3f3;
-      border-top: 3px solid #4285F4;
-      border-radius: 50%;
-      width: 16px;
-      height: 16px;
-      animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
     #footer { margin-top: 20px; font-size: 14px; color: #555; }
   </style>
 </head>
@@ -38,7 +22,6 @@
 <h1>Email Summary Dashboard</h1>
 
 <button id="refreshBtn" class="btn">Refresh Today's Emails</button>
-<div id="spinner"></div>
 <p id="status"></p>
 
 <table id="emailTable">
@@ -69,8 +52,6 @@ function getImportanceClass(score) {
   return 'importance-low';
 }
 
-console.log("Raw response preview:", await res.clone().text());
-
 async function fetchSheetData() {
   const res = await fetch(DATA_URL);
   const contentType = res.headers.get("content-type");
@@ -85,65 +66,54 @@ async function fetchSheetData() {
   }
 
   const data = await res.json();
-
   if (!Array.isArray(data)) {
     throw new Error("Data is not an array.");
   }
-
   return data;
 }
 
-
 async function renderDashboard() {
   document.getElementById('status').textContent = 'Loading data...';
-  document.getElementById('spinner').style.display = 'inline-block';
 
   try {
     const data = await fetchSheetData();
     const tbody = document.querySelector('#emailTable tbody');
     tbody.innerHTML = '';
 
-    if (data && Array.isArray(data)) {
-      data.forEach(row => {
-        const score = row.importanceScore || row['Importance Score'] || 0;
-        const tr = document.createElement('tr');
-        tr.className = getImportanceClass(score);
-        tr.innerHTML = `
-          <td>${row.date || row.Date || ''}</td>
-          <td>${row.sender || row.Sender || ''}</td>
-          <td>${row.subject || row.Subject || ''}</td>
-          <td>${row.summary || row.Summary || ''}</td>
-          <td>${score}</td>
-          <td><a href="${row.permalink || row.Permalink || '#'}" target="_blank">Open</a></td>
-        `;
-        tbody.appendChild(tr);
-      });
-    } else {
-      document.getElementById('status').textContent = 'No email data found.';
-    }
+    data.forEach(row => {
+      const score = row.importanceScore || row['Importance Score'] || 0;
+      const tr = document.createElement('tr');
+      tr.className = getImportanceClass(score);
+      tr.innerHTML = `
+        <td>${row.date || row.Date || ''}</td>
+        <td>${row.sender || row.Sender || ''}</td>
+        <td>${row.subject || row.Subject || ''}</td>
+        <td>${row.summary || row.Summary || ''}</td>
+        <td>${score}</td>
+        <td><a href="${row.permalink || row.Permalink || '#'}" target="_blank">Open</a></td>
+      `;
+      tbody.appendChild(tr);
+    });
 
     document.getElementById('lastUpdated').textContent = new Date().toLocaleString();
+    document.getElementById('status').textContent = '';
   } catch (err) {
     document.getElementById('status').textContent = 'Error loading data: ' + err.message;
     console.error(err);
   }
-
-  document.getElementById('spinner').style.display = 'none';
 }
 
 document.getElementById('refreshBtn').addEventListener('click', async () => {
   const btn = document.getElementById('refreshBtn');
   btn.disabled = true;
   document.getElementById('status').textContent = 'Processing emails...';
-  document.getElementById('spinner').style.display = 'inline-block';
 
   try {
-    // ✅ Send a POST request to trigger email processing
     const processRes = await fetch(APPS_SCRIPT_WEBAPP_URL, { method: 'POST' });
     const processMsg = await processRes.text();
     document.getElementById('status').textContent = processMsg;
 
-    // Wait for 3 seconds, then re-render dashboard
+    // Wait 3 seconds before fetching updated data
     setTimeout(async () => {
       try {
         await renderDashboard();
@@ -152,7 +122,6 @@ document.getElementById('refreshBtn').addEventListener('click', async () => {
         console.error(err);
       } finally {
         btn.disabled = false;
-        document.getElementById('spinner').style.display = 'none';
       }
     }, 3000);
     
@@ -160,10 +129,8 @@ document.getElementById('refreshBtn').addEventListener('click', async () => {
     document.getElementById('status').textContent = 'Error refreshing data: ' + err.message;
     console.error(err);
     btn.disabled = false;
-    document.getElementById('spinner').style.display = 'none';
   }
 });
-
 
 window.onload = renderDashboard;
 </script>
