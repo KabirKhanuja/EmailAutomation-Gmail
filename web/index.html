@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Email Dashboard</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background-color: #f2f2f2; }
+    .btn { padding: 10px 20px; background-color: #4285F4; color: white; border: none; cursor: pointer; }
+    .btn:disabled { background-color: #aaa; }
+  </style>
+</head>
+<body>
+
+<h1>Email Summary Dashboard</h1>
+
+<button id="refreshBtn" class="btn">Refresh Today's Emails</button>
+<p id="status"></p>
+
+<table id="emailTable">
+  <thead>
+    <tr>
+      <th>Date</th>
+      <th>Sender</th>
+      <th>Subject</th>
+      <th>Summary</th>
+      <th>Importance</th>
+      <th>Permalink</th>
+    </tr>
+  </thead>
+  <tbody>
+    
+  </tbody>
+</table>
+
+<script>
+const SHEET_ID = '1XFCGbCVgpSpkjXl_sUdLnK_K4B9HsB-74lxeii5qWQo';
+const SHEET_NAME = 'EmailDashboard';
+const APPS_SCRIPT_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbwkB-Dtimpjt1f0p-0WY0ry8KA6RhQ2ivk_ZhheD4Oet7LoSGgWjFMsAlYfvCvBzjqo/exec'; 
+
+async function fetchSheetData() {
+  const sheetUrl = `https://opensheet.elk.sh/${SHEET_ID}/${SHEET_NAME}`;
+  const res = await fetch(sheetUrl);
+  const data = await res.json();
+  if (!Array.isArray(data)) {
+    throw new Error("Data is not an array. Check sheet structure.");
+  }
+  return data;
+}
+
+
+async function renderDashboard() {
+  document.getElementById('status').textContent = 'Loading data...';
+  const data = await fetchSheetData();
+  const tbody = document.querySelector('#emailTable tbody');
+  tbody.innerHTML = '';
+
+  data.forEach(row => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${row.Date}</td>
+      <td>${row.Sender}</td>
+      <td>${row.Subject}</td>
+      <td>${row.Summary}</td>
+      <td>${row['Importance Score']}</td>
+      <td><a href="${row.Permalink}" target="_blank">Open</a></td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('status').textContent = '';
+}
+
+document.getElementById('refreshBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('refreshBtn');
+  btn.disabled = true;
+  document.getElementById('status').textContent = 'Processing emails...';
+
+  try {
+    const res = await fetch(APPS_SCRIPT_WEBAPP_URL);
+    const msg = await res.text();
+    document.getElementById('status').textContent = msg;
+    setTimeout(renderDashboard, 4000); 
+  } catch (err) {
+    document.getElementById('status').textContent = 'Error refreshing data.';
+  }
+
+  btn.disabled = false;
+});
+
+window.onload = renderDashboard;
+</script>
+
+</body>
+</html>
