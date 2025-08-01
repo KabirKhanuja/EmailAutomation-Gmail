@@ -70,9 +70,14 @@ function getImportanceClass(score) {
 }
 
 async function fetchSheetData() {
-  const res = await fetch(DATA_URL); // only fetch from ?mode=read for JSON
+  const res = await fetch(DATA_URL);
+  if (!res.ok) {
+    throw new Error(`HTTP error! status: ${res.status}`);
+  }
   const data = await res.json();
-  if (!Array.isArray(data)) throw new Error("Data is not an array.");
+  if (!Array.isArray(data)) {
+    throw new Error("Data is not an array.");
+  }
   return data;
 }
 
@@ -85,25 +90,28 @@ async function renderDashboard() {
     const tbody = document.querySelector('#emailTable tbody');
     tbody.innerHTML = '';
 
-    data.forEach(row => {
-      const score = row.importanceScore || row['Importance Score'];
-      const tr = document.createElement('tr');
-      tr.className = getImportanceClass(score);
-      tr.innerHTML = `
-        <td>${row.date || row.Date}</td>
-        <td>${row.sender || row.Sender}</td>
-        <td>${row.subject || row.Subject}</td>
-        <td>${row.summary || row.Summary}</td>
-        <td>${score}</td>
-        <td><a href="${row.permalink || row.Permalink}" target="_blank">Open</a></td>
-      `;
-      tbody.appendChild(tr);
-    });
+    if (data && Array.isArray(data)) {
+      data.forEach(row => {
+        const score = row.importanceScore || row['Importance Score'] || 0;
+        const tr = document.createElement('tr');
+        tr.className = getImportanceClass(score);
+        tr.innerHTML = `
+          <td>${row.date || row.Date || ''}</td>
+          <td>${row.sender || row.Sender || ''}</td>
+          <td>${row.subject || row.Subject || ''}</td>
+          <td>${row.summary || row.Summary || ''}</td>
+          <td>${score}</td>
+          <td><a href="${row.permalink || row.Permalink || '#'}" target="_blank">Open</a></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    } else {
+      document.getElementById('status').textContent = 'No email data found.';
+    }
 
     document.getElementById('lastUpdated').textContent = new Date().toLocaleString();
-    document.getElementById('status').textContent = '';
   } catch (err) {
-    document.getElementById('status').textContent = 'Error loading data.';
+    document.getElementById('status').textContent = 'Error loading data: ' + err.message;
     console.error(err);
   }
 
@@ -117,22 +125,37 @@ document.getElementById('refreshBtn').addEventListener('click', async () => {
   document.getElementById('spinner').style.display = 'inline-block';
 
   try {
-    const res = await fetch(APPS_SCRIPT_WEBAPP_URL); // triggers processing
-    const msg = await res.text();
-    document.getElementById('status').textContent = msg;
+    // First trigger the processing
+    const processRes = await fetch(APPS_SCRIPT_WEBAPP_URL);
+    if (!processRes.ok) {
+      throw new Error(`HTTP error! status: ${processRes.status}`);
+    }
+    const processMsg = await processRes.text();
+    document.getElementById('status').textContent = processMsg;
 
-    setTimeout(renderDashboard, 4000); // delay to allow data write
+    // Then fetch the updated data after a short delay
+    setTimeout(async () => {
+      try {
+        await renderDashboard();
+      } catch (err) {
+        document.getElementById('status').textContent = 'Error loading updated data: ' + err.message;
+        console.error(err);
+      } finally {
+        btn.disabled = false;
+        document.getElementById('spinner').style.display = 'none';
+      }
+    }, 3000); // 3 second delay to allow data processing
+    
   } catch (err) {
-    document.getElementById('status').textContent = 'Error refreshing data.';
+    document.getElementById('status').textContent = 'Error refreshing data: ' + err.message;
     console.error(err);
+    btn.disabled = false;
+    document.getElementById('spinner').style.display = 'none';
   }
-
-  btn.disabled = false;
 });
 
 window.onload = renderDashboard;
 </script>
-
 
 </body>
 </html>
