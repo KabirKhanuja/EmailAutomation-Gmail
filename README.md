@@ -1,6 +1,9 @@
 # EmailAutomation
 It streamlines the management of a high volume gmail inbox by extracting important emails from the day through an importance score and summarizing it. 
 
+<img width="1906" height="764" alt="image" src="https://github.com/user-attachments/assets/80bc2e92-be95-43be-81a1-48557f7ca721" />
+
+
 This project automates the daily processing of Gmail inbox messages using Google Apps Script. It extracts all emails received today, summarizes them using Groq's LLaMA 3 API, and assigns an importance score to each message. The top emails are logged into a connected Google Sheet dashboard for easy prioritization.
 
 # Features
