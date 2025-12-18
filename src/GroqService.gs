@@ -1,4 +1,4 @@
-const GROQ_API_KEY = 'API KEY HERE';
+const GROQ_API_KEY = 'YOUR_API_KEY';
 
 function getGroqSummaryAndImportance(subject, body) {
   const truncatedBody = body.substring(0, 2000);
@@ -9,9 +9,9 @@ function getGroqSummaryAndImportance(subject, body) {
 1. A short summary of the content.
 2. An importance score from 1 to 10:
    - 1–3: spam, newsletters, ads.
-   - 4–6: general updates, notifications.
-   - 7–8: work-related emails, meetings, assignments.
-   - 9–10: urgent messages, deadlines, critical issues.
+   - 4–5: general updates, notifications.
+   - 6–7: work-related emails, meetings, assignments.
+   - 8–10: urgent messages, deadlines, critical issues.
 
 The response must be in strict JSON format with two fields: "summary" and "importanceScore".
 
@@ -29,7 +29,7 @@ Body: ${truncatedBody}`;
   };
 
   const payload = JSON.stringify({
-    model: 'llama3-70b-8192',
+    model: 'llama-3.1-8b-instant',
     messages: [
       { role: 'system', content: 'You are an assistant that responds with structured JSON only.' },
       { role: 'user', content: prompt }
@@ -76,4 +76,3 @@ Body: ${truncatedBody}`;
     };
   }
 }
-
