@@ -1,126 +1,144 @@
-const DASHBOARD_SHEET_ID = '1XFCGbCVgpSpkjXl_sUdLnK_K4B9HsB-74lxeii5qWQo';
-const DASHBOARD_SHEET_NAME = 'EmailDashboard';
-const PROCESSED_LABEL = 'AutomationProcessed';
+//config 
+const DASHBOARD_SHEET_ID = '1XFCGbCVgpSpkjXl_sUdLnK_K4B9HsB-74lxeii5qWQo'; // this is my sheet id, you can replace it with yours
+const DASHBOARD_SHEET_NAME = 'EmailDashboard'; // name of my sheet
+const PROCESSED_LABEL = 'AutomationProcessed'; // this is the label which you'll have in your mails 
 
-
+//utils 
 function ensureGmailLabel(labelName) {
-  if (!labelName || typeof labelName !== 'string' || labelName.trim() === '') {
-    throw new Error('Label name is invalid or empty.');
-  }
-
-  const sanitizedLabel = labelName.trim().replace(/[^\w\s-]/g, '');
-
-  let label = GmailApp.getUserLabelByName(sanitizedLabel);
+  let label = GmailApp.getUserLabelByName(labelName);
   if (!label) {
-    label = GmailApp.createLabel(sanitizedLabel);
+    label = GmailApp.createLabel(labelName);
   }
   return label;
 }
 
-
-function getTodayDateQuery() {
-  const today = new Date();
-  const yyyy = today.getFullYear();
-  const mm = String(today.getMonth() + 1).padStart(2, '0');
-  const dd = String(today.getDate()).padStart(2, '0');
-  return `${yyyy}/${mm}/${dd}`;
-}
-
-
+// everything related to the sheet and operations 
 function storeEmailDataInSheet(emailData) {
-  const sheet = SpreadsheetApp.openById(DASHBOARD_SHEET_ID).getSheetByName(DASHBOARD_SHEET_NAME);
-  if (!sheet) throw new Error("Sheet not found: " + DASHBOARD_SHEET_NAME);
+  const sheet = SpreadsheetApp
+    .openById(DASHBOARD_SHEET_ID)
+    .getSheetByName(DASHBOARD_SHEET_NAME);
+
+  if (!sheet) {
+    throw new Error('Sheet not found: ' + DASHBOARD_SHEET_NAME);
+  }
 
   sheet.clearContents();
-  sheet.appendRow(['Date', 'Sender', 'Subject', 'Summary', 'Importance Score', 'Message ID', 'Permalink']);
+  sheet.appendRow([
+    'Date',
+    'Sender',
+    'Subject',
+    'Summary',
+    'Importance Score',
+    'Message ID',
+    'Permalink'
+  ]);
 
-  emailData.forEach(entry => {
+  emailData.forEach(e => {
     sheet.appendRow([
-      entry.date,
-      entry.sender,
-      entry.subject,
-      entry.summary,
-      entry.importanceScore,
-      entry.messageId,
-      entry.permalink
+      e.date,
+      e.sender,
+      e.subject,
+      e.summary,
+      e.importanceScore,
+      e.messageId,
+      e.permalink
     ]);
   });
 }
 
-
+// core logic 
 function processImportantEmailsForDashboard() {
+  Logger.log('=== Processing started ===');
+
   const label = ensureGmailLabel(PROCESSED_LABEL);
-  const queryDate = getTodayDateQuery();
-  const threads = GmailApp.search(`after:${queryDate} -label:${PROCESSED_LABEL}`);
-  let importantEmails = [];
+
+  // IMPORTANT: do NOT use after: — it breaks silently
+  const threads = GmailApp.search(`in:inbox -label:${PROCESSED_LABEL}`);
+  Logger.log(`Threads found: ${threads.length}`);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  let collected = [];
 
   threads.forEach(thread => {
     thread.getMessages().forEach(message => {
-      const messageDate = message.getDate();
-      const today = new Date();
-      const isToday =
-        messageDate.getFullYear() === today.getFullYear() &&
-        messageDate.getMonth() === today.getMonth() &&
-        messageDate.getDate() === today.getDate();
+      const msgDate = message.getDate();
+      msgDate.setHours(0, 0, 0, 0);
 
-      if (!isToday) return;
-
-      const sender = message.getFrom();
-      const subject = message.getSubject();
-      const body = message.getPlainBody();
-      const messageId = message.getId();
-      const permalink = thread.getPermalink();
+      if (msgDate.getTime() !== today.getTime()) return;
 
       try {
-        const { summary, importanceScore } = getGroqSummaryAndImportance(subject, body);
+        const subject = message.getSubject();
+        const body = message.getPlainBody();
 
-        importantEmails.push({
-          date: messageDate.toLocaleString(),
-          sender,
+        Logger.log(`Processing email: ${subject}`);
+
+        const { summary, importanceScore } =
+          getGroqSummaryAndImportance(subject, body);
+
+        collected.push({
+          date: message.getDate().toLocaleString(),
+          sender: message.getFrom(),
           subject,
           summary,
           importanceScore,
-          messageId,
-          permalink
+          messageId: message.getId(),
+          permalink: thread.getPermalink()
         });
 
         thread.addLabel(label);
-      } catch (e) {
-        Logger.log("Failed to process message: " + e.message);
+      } catch (err) {
+        Logger.log('Email failed: ' + err.message);
       }
     });
   });
 
-  importantEmails.sort((a, b) => b.importanceScore - a.importanceScore);
-  storeEmailDataInSheet(importantEmails.slice(0, 25));
+  collected.sort((a, b) => b.importanceScore - a.importanceScore);
+
+  Logger.log(`Total emails collected: ${collected.length}`);
+
+  storeEmailDataInSheet(collected.slice(0, 25));
 }
 
-
+// for web/index.html to fetch the data
 function doGet() {
-  const sheet = SpreadsheetApp.openById(DASHBOARD_SHEET_ID).getSheetByName(DASHBOARD_SHEET_NAME);
-  const rows = sheet.getDataRange().getValues();
-  const headers = rows.shift();
+  const sheet = SpreadsheetApp
+    .openById(DASHBOARD_SHEET_ID)
+    .getSheetByName(DASHBOARD_SHEET_NAME);
 
-  const data = rows.map(row => {
+  if (!sheet) {
+    return ContentService.createTextOutput('[]')
+      .setMimeType(ContentService.MimeType.JSON)
+      .setHeader('Access-Control-Allow-Origin', '*');
+  }
+
+  const rows = sheet.getDataRange().getValues();
+  if (rows.length <= 1) {
+    return ContentService.createTextOutput('[]')
+      .setMimeType(ContentService.MimeType.JSON)
+      .setHeader('Access-Control-Allow-Origin', '*');
+  }
+
+  const headers = rows.shift();
+  const data = rows.map(r => {
     let obj = {};
-    headers.forEach((key, i) => obj[key] = row[i]);
+    headers.forEach((h, i) => obj[h] = r[i]);
     return obj;
   });
 
   return ContentService
-    .createTextOutput(JSON.stringify(data)) 
-    .setMimeType(ContentService.MimeType.JSON) 
-    .setHeader("Access-Control-Allow-Origin", "*");
+    .createTextOutput(JSON.stringify(data))
+    .setMimeType(ContentService.MimeType.JSON)
+    .setHeader('Access-Control-Allow-Origin', '*');
 }
 
-
-
+// for web/index.html refresh
 function doPost() {
-  processImportantEmailsForDashboard(); 
+  processImportantEmailsForDashboard();
 
   return ContentService
-    .createTextOutput("Emails processed successfully.")
+    .createTextOutput('Emails refreshed successfully.')
     .setMimeType(ContentService.MimeType.TEXT)
-    .setHeader("Access-Control-Allow-Origin", "*");
+    .setHeader('Access-Control-Allow-Origin', '*');
 }
-
